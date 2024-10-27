@@ -65,7 +65,7 @@ def Global_HE(img):
     freq = Generate_Histogram(img)
     cdf= Cumulative_Distribution_Func(freq)
 
-    #draw_historgram(freq)
+    draw_historgram(freq)
 
 
     # step 2 : Calculate the histogram equalization
@@ -82,6 +82,8 @@ def Global_HE(img):
         os.makedirs(output_dir)
     
     cv.imwrite(output_dir+'/'+'output_global.png', new_img)
+    print(f"PSNR_global: {calculate_PSNR(img,new_img)}")
+
     return
 
 
@@ -93,29 +95,41 @@ def Local_HE(img,size=30):
     # step 1 : Count the number of pixel occurrences
     # step 2 : Define a square neighborhood and move the center of this area from pixel to pixel.
     # step 3 : Calculate the histogram equalization
-    for i in range(img.shape[0]):
-        for j in range(img.shape[1]):
+    for i in range(0,img.shape[0],size):
+        for j in range(0,img.shape[1],size):
             area = padded_img[i:i + size, j:j + size]
 
             freq = Generate_Histogram(area)
 
             cdf= Cumulative_Distribution_Func(freq)
 
-            new_img[i, j] = cdf[img[i, j]]
+            for x in range(i, min(i + size, img.shape[0])):
+                for y in range(j, min(j + size, img.shape[1])):
+                    new_img[x, y] = cdf[img[x, y]]
             
     
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
     
     cv.imwrite(output_dir+'/'+f'output_local{size}.png', new_img)
-    pass
+    print(f"PSNR_local_{size}: {calculate_PSNR(img,new_img)}")
+    return
+
+def calculate_PSNR(original, compressed):
+    mse = np.mean((original - compressed) ** 2)
+    if mse == 0:
+        return np.infty
+    max_pixel = 255.0
+    psnr = 10 * np.log10((max_pixel ** 2) / mse)
+    return psnr
+
     
  
 if __name__ == '__main__':
 
     img = cv.imread("./HW2Histogram_Equalization/images/Lena.png", cv.IMREAD_GRAYSCALE)
     Global_HE(img)
-    Local_HE(img,max(img.shape[0],img.shape[1])//10)
+    Local_HE(img,max(img.shape[0],img.shape[1])//5)
 
     # TODO: Display histogram(comparison before and after equalization)
     
