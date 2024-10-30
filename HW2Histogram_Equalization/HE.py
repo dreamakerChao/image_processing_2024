@@ -87,33 +87,26 @@ def Global_HE(img):
     return
 
 
-def Local_HE(img,size=30):
-    # TODO:
+def Local_HE(img, size=3):
     padded_img = cv.copyMakeBorder(img, size // 2, size // 2, size // 2, size // 2, cv.BORDER_REFLECT)
     new_img = np.zeros_like(img)
 
-    # step 1 : Count the number of pixel occurrences
-    # step 2 : Define a square neighborhood and move the center of this area from pixel to pixel.
-    # step 3 : Calculate the histogram equalization
-    for i in range(0,img.shape[0],size):
-        for j in range(0,img.shape[1],size):
+    for i in range(img.shape[0]):
+        for j in range(img.shape[1]):
             area = padded_img[i:i + size, j:j + size]
-
             freq = Generate_Histogram(area)
+            #draw_historgram(freq)
+            cdf = Cumulative_Distribution_Func(freq)
+            new_img[i, j] = cdf[img[i, j]]
 
-            cdf= Cumulative_Distribution_Func(freq)
-
-            for x in range(i, min(i + size, img.shape[0])):
-                for y in range(j, min(j + size, img.shape[1])):
-                    new_img[x, y] = cdf[img[x, y]]
-            
-    
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
-    
-    cv.imwrite(output_dir+'/'+f'output_local{size}.png', new_img)
-    print(f"PSNR_local_{size}: {calculate_PSNR(img,new_img)}")
-    return
+
+    output_path = f"./HW2Histogram_Equalization/output_images/output_local{size}.png"
+    cv.imwrite(output_path, new_img)
+    print(f"PSNR_local_{size}: {calculate_PSNR(img, new_img)}")
+
+    return new_img
 
 def calculate_PSNR(original, compressed):
     mse = np.mean((original - compressed) ** 2)
@@ -126,10 +119,10 @@ def calculate_PSNR(original, compressed):
     
  
 if __name__ == '__main__':
-
+    #img = cv.imread("./HW2Histogram_Equalization/images/inside.jpg", cv.IMREAD_GRAYSCALE)
     img = cv.imread("./HW2Histogram_Equalization/images/Lena.png", cv.IMREAD_GRAYSCALE)
     Global_HE(img)
-    Local_HE(img,max(img.shape[0],img.shape[1])//5)
+    Local_HE(img,7)
 
     # TODO: Display histogram(comparison before and after equalization)
     
