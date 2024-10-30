@@ -105,6 +105,8 @@ def Local_HE(img, size=3):
     output_path = f"./HW2Histogram_Equalization/output_images/output_local{size}.png"
     cv.imwrite(output_path, new_img)
     print(f"PSNR_local_{size}: {calculate_PSNR(img, new_img)}")
+    freq = Generate_Histogram(new_img)
+    draw_historgram(freq)
 
     return new_img
 
