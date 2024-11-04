@@ -3,6 +3,7 @@ import cv2 as cv
 import numpy as np
 import matplotlib.pyplot as plt
 import os
+from concurrent.futures import ThreadPoolExecutor
 output_dir = './HW2Histogram_Equalization/output_images'
 
 def Generate_Histogram(img):
@@ -14,44 +15,40 @@ def Generate_Histogram(img):
 
     return frequency
 
-def Cumulative_Distribution_Func(frequency):
-    cdf=[]
-    sum=0
-
-    min=0
-    max=0
-    t=0
+def Cumulative_Distribution_Func(frequency,num_pixels,local=False):
+    cdf=[0.0]*256
+    cdf_normalize=[0]*256
 
     for i in range(256):
-        if(frequency[i] != 0):
-            if(t==0):
-                min=i
-            if(i > max):
-                max=i
-            t+=1
-        sum+=frequency[i]
-        cdf.append(sum)
+        if(i==0):
+            cdf[0] = frequency[0] / num_pixels
+        else:
+            if(local):
+                cdf[i] = min(1,cdf[i-1] + frequency[i] / num_pixels )
+            else:
+                cdf[i] = cdf[i-1] + frequency[i] / num_pixels  
 
+    cdf_min = min([x for x in cdf if x > 0])
+    
     ##normalize
-    cdf_normalized=[0]*256
     for i in range(256):
-        if(cdf[i]!=0):
-            if(max-min!=0):
-                temp = (i - min) * 255 / (max - min)
-                cdf_normalized[i] = np.round(temp)
+        cdf_normalize[i] = np.round(cdf[i]*255).astype(np.uint8)
 
-    return cdf_normalized
+    return cdf_normalize
 
-def draw_historgram(frequency):
+def draw_historgram(origin,after=None):
     values=[]
     for i in range(256):
         values.append(i)
 
-    plt.bar(values, frequency, width=0.8, edgecolor='black')
+    plt.bar(values, origin, width=0.8, edgecolor='black', color='blue', alpha=0.5, label='Original')
+    if (after != None):
+        plt.bar(values, after, width=0.8, edgecolor='red', color='red', alpha=0.5, label='After HE')
 
     plt.title('Histogram from Given image')
     plt.xlabel('Value')
     plt.ylabel('Frequency')
+    plt.legend()
     plt.show()
 
     del(values)
@@ -61,22 +58,23 @@ def draw_historgram(frequency):
 def Global_HE(img):
     #TODO:
     # step 1 : Count the number of pixel occurrences (hint : numpy --> unique())
-    new_img = img.copy()
+    new_img = np.zeros_like(img,dtype=np.uint8)
+
+    height = img.shape[0]
+    width = img.shape[1]
+
     freq = Generate_Histogram(img)
-    cdf= Cumulative_Distribution_Func(freq)
-
-    draw_historgram(freq)
-
+    cdf= Cumulative_Distribution_Func(freq,height*width)
 
     # step 2 : Calculate the histogram equalization
 
-    for i in range(img.shape[0]):
-        for j in range(img.shape[1]):
+    for i in range(height):
+        for j in range(width):
             new_img[i,j] = cdf[img[i,j]]
     
     # step 3 : Display histogram(comparison before and after equalization)
     new_freq=Generate_Histogram(new_img)
-    draw_historgram(new_freq)
+    draw_historgram(freq,new_freq)
 
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
@@ -87,16 +85,18 @@ def Global_HE(img):
     return
 
 
-def Local_HE(img, size=3):
-    padded_img = cv.copyMakeBorder(img, size // 2, size // 2, size // 2, size // 2, cv.BORDER_REFLECT)
-    new_img = np.zeros_like(img)
+def Local_HE(img, size=7):
+    new_img = np.zeros_like(img,dtype=np.uint8)
+    height=img.shape[0]
+    width=img.shape[1]
 
-    for i in range(img.shape[0]):
-        for j in range(img.shape[1]):
-            area = padded_img[i:i + size, j:j + size]
+    half_size = size//2
+
+    for i in range(height):
+        for j in range(width):
+            area = img[max(0, i - half_size):min(height, i + half_size + 1), max(0, j - half_size):min(width, j + half_size + 1)]
             freq = Generate_Histogram(area)
-            #draw_historgram(freq)
-            cdf = Cumulative_Distribution_Func(freq)
+            cdf = Cumulative_Distribution_Func(freq,area.size,local=True)
             new_img[i, j] = cdf[img[i, j]]
 
     if not os.path.exists(output_dir):
@@ -121,7 +121,7 @@ def calculate_PSNR(original, compressed):
     
  
 if __name__ == '__main__':
-    #img = cv.imread("./HW2Histogram_Equalization/images/inside.jpg", cv.IMREAD_GRAYSCALE)
+    #img = cv.imread("./HW2Histogram_Equalization/images/test.png", cv.IMREAD_GRAYSCALE)
     img = cv.imread("./HW2Histogram_Equalization/images/Lena.png", cv.IMREAD_GRAYSCALE)
     Global_HE(img)
     Local_HE(img,7)
