@@ -61,9 +61,9 @@ def draw_historgram(origin,save=None,after=None):
             if not os.path.exists(histogram_dir):
                 os.makedirs(histogram_dir)
             if save == 0:
-                fig.savefig(f'{histogram_dir}/histogram_global.png')
+                fig.savefig(f'{histogram_dir}/histogram_global_inside.png')
             else:
-                fig.savefig(f'{histogram_dir}/histogram_local_{save}.png')
+                fig.savefig(f'{histogram_dir}/histogram_local_{save}_inside.png')
     else:
         fig.show()
         
@@ -94,7 +94,7 @@ def Global_HE(img):
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
     
-    cv.imwrite(output_dir+'/'+'output_global.png', new_img)
+    cv.imwrite(output_dir+'/'+'output_inside_global.png', new_img)
     print(f"PSNR_global: {calculate_PSNR(img,new_img)}")
 
     return
@@ -118,7 +118,7 @@ def Local_HE(img, size=7):
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
-    output_path = f"./HW2Histogram_Equalization/output_images/output_local{size}.png"
+    output_path = f"./HW2Histogram_Equalization/output_images/output_inside_local{size}.png"
     cv.imwrite(output_path, new_img)
     print(f"PSNR_local_{size}: {calculate_PSNR(img, new_img)}")
     freq = Generate_Histogram(new_img)
@@ -141,8 +141,8 @@ def process_with_different_sizes(img, size):
     return new_img  
  
 if __name__ == '__main__':
-    #img = cv.imread("./HW2Histogram_Equalization/images/test.png", cv.IMREAD_GRAYSCALE)
-    img = cv.imread("./HW2Histogram_Equalization/images/Lena.png", cv.IMREAD_GRAYSCALE)
+    img = cv.imread("./HW2Histogram_Equalization/images/inside.png", cv.IMREAD_GRAYSCALE)
+    #img = cv.imread("./HW2Histogram_Equalization/images/Lena.png", cv.IMREAD_GRAYSCALE)
     Global_HE(img)
 
     sizes = [7,11,15,17,31,41,51,71]
@@ -152,6 +152,7 @@ if __name__ == '__main__':
             executor.submit(Local_HE, img, size)
     
     print("All tasks submitted.")
+
 
     # TODO: Display histogram(comparison before and after equalization)
     
