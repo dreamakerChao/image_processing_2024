@@ -36,7 +36,7 @@ def Cumulative_Distribution_Func(frequency,num_pixels,local=False):
 
     return cdf_normalize
 
-def draw_historgram(origin,after=None):
+def draw_historgram(origin,save=None,after=None):
     values=[]
     for i in range(256):
         values.append(i)
@@ -49,10 +49,17 @@ def draw_historgram(origin,after=None):
     plt.xlabel('Value')
     plt.ylabel('Frequency')
     plt.legend()
-    plt.show()
 
-    del(values)
-    return
+    if(save!=None):
+        if not os.path.exists('./HW2Histogram_Equalization/histogram'):
+            os.makedirs('./HW2Histogram_Equalization/histogram')
+        if(save==0):
+            plt.savefig(f'./HW2Histogram_Equalization/histogram/histogram_global.png')
+        if(save>0):
+            plt.savefig(f'./HW2Histogram_Equalization/histogram/histogram_local_{save}.png')
+    else:
+        plt.show()
+        
 
 
 def Global_HE(img):
@@ -74,7 +81,7 @@ def Global_HE(img):
     
     # step 3 : Display histogram(comparison before and after equalization)
     new_freq=Generate_Histogram(new_img)
-    draw_historgram(freq,new_freq)
+    draw_historgram(freq,save=0,after=new_freq)
 
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
@@ -86,6 +93,7 @@ def Global_HE(img):
 
 
 def Local_HE(img, size=7):
+    print(f"Starting Local HE with size {size}")
     new_img = np.zeros_like(img,dtype=np.uint8)
     height=img.shape[0]
     width=img.shape[1]
@@ -106,7 +114,7 @@ def Local_HE(img, size=7):
     cv.imwrite(output_path, new_img)
     print(f"PSNR_local_{size}: {calculate_PSNR(img, new_img)}")
     freq = Generate_Histogram(new_img)
-    draw_historgram(freq)
+    draw_historgram(freq,save=size)
 
     return new_img
 
@@ -118,13 +126,24 @@ def calculate_PSNR(original, compressed):
     psnr = 10 * np.log10((max_pixel ** 2) / mse)
     return psnr
 
-    
+def process_with_different_sizes(img, size):
+    # 進行 Local Histogram Equalization
+    new_img = Local_HE(img, size)
+    print(f"Processed Local HE with size {size}")
+    return new_img  
  
 if __name__ == '__main__':
     #img = cv.imread("./HW2Histogram_Equalization/images/test.png", cv.IMREAD_GRAYSCALE)
     img = cv.imread("./HW2Histogram_Equalization/images/Lena.png", cv.IMREAD_GRAYSCALE)
     Global_HE(img)
-    Local_HE(img,7)
+
+    sizes = [7,11,15,17,31,41,51,71]
+
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        for size in sizes:
+            executor.submit(Local_HE, img, size)
+    
+    print("All tasks submitted.")
 
     # TODO: Display histogram(comparison before and after equalization)
     
