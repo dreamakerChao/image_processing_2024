@@ -2,8 +2,12 @@ import sys
 import cv2 as cv
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib.figure import Figure
 import os
 from concurrent.futures import ThreadPoolExecutor
+import threading
+save_lock = threading.Lock()
+
 output_dir = './HW2Histogram_Equalization/output_images'
 
 def Generate_Histogram(img):
@@ -37,29 +41,33 @@ def Cumulative_Distribution_Func(frequency,num_pixels,local=False):
     return cdf_normalize
 
 def draw_historgram(origin,save=None,after=None):
-    values=[]
-    for i in range(256):
-        values.append(i)
+    fig = Figure()
+    ax = fig.add_subplot(111)
 
-    plt.bar(values, origin, width=0.8, edgecolor='black', color='blue', alpha=0.5, label='Original')
-    if (after != None):
-        plt.bar(values, after, width=0.8, edgecolor='red', color='red', alpha=0.5, label='After HE')
+    # 繪製直方圖
+    values = list(range(256))
+    ax.bar(values, origin, width=0.8, edgecolor='black', color='blue', alpha=0.5, label='Original')
+    if after is not None:
+        ax.bar(values, after, width=0.8, edgecolor='red', color='red', alpha=0.5, label='After HE')
 
-    plt.title('Histogram from Given image')
-    plt.xlabel('Value')
-    plt.ylabel('Frequency')
-    plt.legend()
+    ax.set_title('Histogram from Given Image')
+    ax.set_xlabel('Value')
+    ax.set_ylabel('Frequency')
+    ax.legend(loc="upper right")
 
-    if(save!=None):
-        if not os.path.exists('./HW2Histogram_Equalization/histogram'):
-            os.makedirs('./HW2Histogram_Equalization/histogram')
-        if(save==0):
-            plt.savefig(f'./HW2Histogram_Equalization/histogram/histogram_global.png')
-        if(save>0):
-            plt.savefig(f'./HW2Histogram_Equalization/histogram/histogram_local_{save}.png')
+    if save is not None:
+        with save_lock:
+            histogram_dir = './HW2Histogram_Equalization/histogram'
+            if not os.path.exists(histogram_dir):
+                os.makedirs(histogram_dir)
+            if save == 0:
+                fig.savefig(f'{histogram_dir}/histogram_global.png')
+            else:
+                fig.savefig(f'{histogram_dir}/histogram_local_{save}.png')
     else:
-        plt.show()
+        fig.show()
         
+    plt.close(fig)
 
 
 def Global_HE(img):
