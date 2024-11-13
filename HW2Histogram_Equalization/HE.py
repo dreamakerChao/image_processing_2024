@@ -94,7 +94,7 @@ def Global_HE(img):
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
     
-    cv.imwrite(output_dir+'/'+'output_inside_global.png', new_img)
+    cv.imwrite(output_dir+'/'+'output_global.png', new_img)
     print(f"PSNR_global: {calculate_PSNR(img,new_img)}")
 
     return
@@ -126,6 +126,36 @@ def Local_HE(img, size=7):
 
     return new_img
 
+
+def Moments_Based_HE(img):
+    new_img = np.zeros_like(img, dtype=np.uint8)
+
+    mean_f = np.mean(img)
+    std_f = np.std(img)
+
+    mean_g = 128
+    std_g = 64
+
+    for i in range(img.shape[0]):
+        for j in range(img.shape[1]):
+            new_pixel = (img[i, j] - mean_f) * (std_g / std_f) + mean_g
+            new_img[i, j] = np.clip(new_pixel, 0, 255)  # avoid overflow
+    
+
+    freq = Generate_Histogram(img)
+    new_freq = Generate_Histogram(new_img)
+    draw_historgram(freq, save=1, after=new_freq)
+
+
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+    
+    cv.imwrite(output_dir + '/' + 'output_moments.png', new_img)
+    print(f"PSNR_moments: {calculate_PSNR(img, new_img)}")
+
+    return new_img
+
+
 def calculate_PSNR(original, compressed):
     mse = np.mean((original - compressed) ** 2)
     if mse == 0:
@@ -141,10 +171,12 @@ def process_with_different_sizes(img, size):
     return new_img  
  
 if __name__ == '__main__':
-    img = cv.imread("./HW2Histogram_Equalization/images/inside.png", cv.IMREAD_GRAYSCALE)
-    #img = cv.imread("./HW2Histogram_Equalization/images/Lena.png", cv.IMREAD_GRAYSCALE)
-    Global_HE(img)
+    #img = cv.imread("./HW2Histogram_Equalization/images/inside.png", cv.IMREAD_GRAYSCALE)
+    img = cv.imread("./HW2Histogram_Equalization/images/Lena.png", cv.IMREAD_GRAYSCALE)
+    #Global_HE(img)
+    enhanced_image = Moments_Based_HE(img)
 
+    '''
     sizes = [7,11,15,17,31,41,51,71]
 
     with ThreadPoolExecutor(max_workers=2) as executor:
@@ -152,7 +184,7 @@ if __name__ == '__main__':
             executor.submit(Local_HE, img, size)
     
     print("All tasks submitted.")
-
+    '''
 
     # TODO: Display histogram(comparison before and after equalization)
     

@@ -1,5 +1,6 @@
 #define _USE_MATH_DEFINES
 #include <math.h>
+#include <time.h>
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -147,7 +148,7 @@ void read_png_file(const char *filename, int *width, int *height, png_bytep **ro
 }
 
 int main() {
-    int size = 9;
+    int size = 3;
     double sigma = 10;
     double kernel[size][size];
 
@@ -168,7 +169,13 @@ int main() {
     printf("Image Width: %d\n", width);
     printf("Image Height: %d\n", height);
 
+    clock_t start_time = clock();
     apply_gaussian_blur(width,height,row_pointers,size,kernel);
+    clock_t end_time = clock();
+    double time_taken = ((double)(end_time - start_time)) / CLOCKS_PER_SEC;
+    printf("time: %.3f s\n", time_taken);
+
+
     write_png_file("./output_img/result.png", width, height, row_pointers);
 
     for (int y = 0; y < height; y++) {
