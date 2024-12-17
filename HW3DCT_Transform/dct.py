@@ -30,7 +30,7 @@ def Global_DCT(img):
 
     return dct_xy
 
-def Local_DCT(img, kernel_size = 32):
+def Local_DCT(img, kernel_size = 8):
     #TODO:
         # 1. Use opencv’s DCT function or numpy’s fft2 function / Designed according to formula
         # 2. Decide the core size by yourself (default 8 * 8)
