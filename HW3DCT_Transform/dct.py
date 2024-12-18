@@ -35,22 +35,18 @@ def Local_DCT(img, kernel_size = 8):
         # 1. Use opencv’s DCT function or numpy’s fft2 function / Designed according to formula
         # 2. Decide the core size by yourself (default 8 * 8)
     h, w = img.shape
-    dct_result = np.zeros_like(img, dtype=np.float32)  # 儲存 DCT 結果
+    dct_result = np.zeros_like(img, dtype=np.float32)  
 
-    # 遍歷圖像，按區塊計算 DCT
     for i in range(0, h, kernel_size):
         for j in range(0, w, kernel_size):
-            # 提取當前區塊
+
             block = img[i:i + kernel_size, j:j + kernel_size]
 
-            # 如果區塊大小不足 kernel_size（邊緣處），則填充 0
             padded_block = np.zeros((kernel_size, kernel_size), dtype=np.float32)
             padded_block[:block.shape[0], :block.shape[1]] = block
 
-            # 計算該區塊的 DCT
             dct_block = dct(dct(padded_block, type=2, axis=0, norm='ortho'), type=2, axis=1, norm='ortho')
 
-            # 將結果存回 dct_result，僅填充原區塊大小的部分
             dct_result[i:i + block.shape[0], j:j + block.shape[1]] = dct_block[:block.shape[0], :block.shape[1]]
 
     return dct_result

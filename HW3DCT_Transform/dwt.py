@@ -27,8 +27,7 @@ def haar_2d(image):
     
     return transformed
 
-def dwt_3level(image):
-    """3-Level 2D Haar Wavelet Transform."""
+def dwt_2level(image):
     # Level 1 transform
     level1 = haar_2d(image)
     h, w = image.shape
@@ -44,21 +43,13 @@ def dwt_3level(image):
     HL2 = level2[h//4:, :w//4]
     HH2 = level2[h//4:, w//4:]
 
-    # Level 3 transform on LL2
-    level3 = haar_2d(LL2)
-    LL3 = level3[:h//8, :w//8]
-    LH3 = level3[:h//8, w//8:]
-    HL3 = level3[h//8:, :w//8]
-    HH3 = level3[h//8:, w//8:]
+    return (LL1, LH1, HL1, HH1), (LL2, LH2, HL2, HH2)
 
-    return (LL1, LH1, HL1, HH1), (LL2, LH2, HL2, HH2), (LL3, LH3, HL3, HH3)
-
-def combine_dwt_levels(level1, level2, level3):
-    """Combine 3-level DWT into one large image."""
+def combine_dwt_levels_2level(level1, level2):
+    """Combine 2-level DWT into one large image."""
     # Unpack levels
     LL1, LH1, HL1, HH1 = level1
     LL2, LH2, HL2, HH2 = level2
-    LL3, LH3, HL3, HH3 = level3
 
     # Create placeholders for the combined image
     h, w = LL1.shape[0] * 2, LL1.shape[1] * 2
@@ -76,17 +67,13 @@ def combine_dwt_levels(level1, level2, level3):
     combined[h//4:h//2, :w//4] = HL2
     combined[h//4:h//2, w//4:w//2] = HH2
 
-    # Level 3 placement (inside LL2)
-    combined[:h//8, :w//8] = LL3
-    combined[:h//8, w//8:w//4] = LH3
-    combined[h//8:h//4, :w//8] = HL3
-    combined[h//8:h//4, w//8:w//4] = HH3
-
     return combined
-
 
 def inverse_haar_1d(low, high):
     """1D Inverse Haar Wavelet Transform for one row or column."""
+    if len(low) == 0 or len(high) == 0:
+        raise ValueError("Input arrays 'low' and 'high' must not be empty.")
+    
     n = len(low) * 2
     output = np.zeros(n, dtype=np.float32)
     for i in range(len(low)):
@@ -96,36 +83,44 @@ def inverse_haar_1d(low, high):
 
 def inverse_haar_2d(LL, LH, HL, HH):
     """2D Inverse Haar Wavelet Transform."""
-    h, w = LL.shape  # LL is the low-low frequency subband
-    restored = np.zeros((h * 2, w * 2), dtype=np.float32)
+    if LL.shape != LH.shape or LL.shape != HL.shape or LL.shape != HH.shape:
+        raise ValueError("All subbands must have the same shape.")
 
-    # Step 1: Combine LL and LH (Vertical Inverse Transform)
+    h, w = LL.shape
+    print(f"Input subbands shapes: LL={LL.shape}, LH={LH.shape}, HL={HL.shape}, HH={HH.shape}")
+
+    # Combine LL and LH (Vertical Inverse Transform)
     vertical = np.zeros((h * 2, w), dtype=np.float32)
-    for i in range(w):
-        low = LL[:, i]
-        high = LH[:, i]
-        vertical[:, i] = inverse_haar_1d(low, high)
+    for j in range(w):
+        low = LL[:, j]
+        high = LH[:, j]
+        output = inverse_haar_1d(low, high)
+        vertical[:h, j] = output[:h]
+        vertical[h:, j] = output[h:]
 
-    # Step 2: Combine HL and HH (Vertical Inverse Transform)
-    for i in range(w):
-        low = HL[:, i]
-        high = HH[:, i]
-        vertical[h:, i] = inverse_haar_1d(low, high)
+    print(f"Vertical shape after transform: {vertical.shape}")
 
-    # Step 3: Horizontal Inverse Transform
+    # Combine HL and HH (Vertical Inverse Transform)
+    for j in range(w):
+        low = HL[:, j]
+        high = HH[:, j]
+        output = inverse_haar_1d(low, high)
+        vertical[:h, j] += output[:h]
+        vertical[h:, j] += output[h:]
+
+    # Horizontal inverse transform
     final_restored = np.zeros((h * 2, w * 2), dtype=np.float32)
     for i in range(h * 2):
         low = vertical[i, :w]
         high = vertical[i, w:]
         final_restored[i, :] = inverse_haar_1d(low, high)
 
+    print(f"Restored image shape: {final_restored.shape}")
     return final_restored
 
-def reconstruct_3level(LL3, LH3, HL3, HH3, LH2, HL2, HH2, LH1, HL1, HH1):
-    """Reconstruct the image from 3-Level DWT components."""
-    # Level 3: Reconstruct LL2
-    LL2 = inverse_haar_2d(LL3, LH3, HL3, HH3)
 
+def reconstruct_2level(LL2, LH2, HL2, HH2, LH1, HL1, HH1):
+    """Reconstruct the image from 2-Level DWT components."""
     # Level 2: Reconstruct LL1
     LL1 = inverse_haar_2d(LL2, LH2, HL2, HH2)
 
@@ -134,20 +129,34 @@ def reconstruct_3level(LL3, LH3, HL3, HH3, LH2, HL2, HH2, LH1, HL1, HH1):
 
     return restored_image
 
+
 if __name__ == "__main__":
     # 讀取灰階影像
     image = cv2.imread('images/F-16-image.png', cv2.IMREAD_GRAYSCALE)
     image = cv2.resize(image, (256, 256))  # Resize for simplicity
 
-    # 執行 3-Level DWT
-    level1, level2, level3 = dwt_3level(image)
+    # 執行 2-Level DWT
+    level1, level2 = dwt_2level(image)
 
     # 拼接成一大張圖
-    combined_image = combine_dwt_levels(level1, level2, level3)
+    combined_image = combine_dwt_levels_2level(level1, level2)
 
     # 顯示結果
     plt.figure(figsize=(10, 10))
     plt.imshow(combined_image, cmap='gray')
-    plt.title("3-Level DWT Combined Image")
+    plt.title("2-Level DWT Combined Image")
+    plt.axis('off')
+    plt.show()
+
+    # 進行還原 (2-Level IDWT)
+    restored_image = reconstruct_2level(
+        level2[0], level2[1], level2[2], level2[3],  # 第二層
+        level1[1], level1[2], level1[3]             # 第一層
+    )
+
+    # 顯示還原結果
+    plt.figure(figsize=(10, 10))
+    plt.imshow(restored_image, cmap='gray')
+    plt.title("Reconstructed Image (2-Level IDWT)")
     plt.axis('off')
     plt.show()
